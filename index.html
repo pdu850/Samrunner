@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sam Runner</title>
+<style>
+body {
+    background-color: skyblue;
+    overflow: hidden; /* Prevent scrollbars */
+    margin: 0; /* Remove default body margins */
+}
+
+canvas {
+    display: block; /* Prevent space below canvas */
+}
+
+#start-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace; /* Pixel-ish font */
+    color: white;
+}
+
+#high-score {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+#play-button {
+    padding: 10px 20px;
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+#game-over-screen {
+    display: none; /* Hidden by default */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+    color: white;
+}
+
+#final-score {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+#restart-button {
+    padding: 10px 20px;
+    background-color: #f44336; /* Red */
+    color: white;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+    <h1>Sam Runner</h1>
+    <p id="high-score">High Score: 0</p>
+    <button id="play-button">Play</button>
+</div>
+
+<div id="game-over-screen">
+    <h1>Game Over</h1>
+    <p id="final-score">Score: 0</p>
+    <button id="restart-button">Restart</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = 800;
+canvas.height = 600;
+
+// Game variables
+let gameState = 'start'; // 'start', 'playing', 'gameOver'
+let highScore = 0;
+let score = 0;
+let playerX = 50;
+let playerY = 400;
+let playerWidth = 30;
+let playerHeight = 50;
+let isJumping = false;
+let jumpHeight = 15;
+let gravity = 0.5;
+let velocityY = 0;
+let groundY = 450;
+let obstacles = [];
+let obstacleSpeed = 5;
+
+// Start screen elements
+const startScreen = document.getElementById('start-screen');
+const highScoreDisplay = document.getElementById('high-score');
+const playButton = document.getElementById('play-button');
+
+// Game over screen elements
+const gameOverScreen = document.getElementById('game-over-screen');
+const finalScoreDisplay = document.getElementById('final-score');
+const restartButton = document.getElementById('restart-button');
+
+// Load high score from local storage
+if (localStorage.getItem('highScore')) {
+    highScore = parseInt(localStorage.getItem('highScore'));
+    highScoreDisplay.textContent = `High Score: ${highScore}`;
+}
+
+// Event listeners
+playButton.addEventListener('click', startGame);
+restartButton.addEventListener('click', restartGame);
+document.addEventListener('keydown', handleKeyDown);
+document.addEventListener('touchstart', handleTouchStart);
+
+// Game functions
+function startGame() {
+    gameState = 'playing';
+    startScreen.style.display = 'none';
+    score = 0;
+    obstacles = [];
+    generateObstacle(); // Initial obstacle
+    gameLoop();
+}
+
+function restartGame() {
+    gameState = 'playing';
+    gameOverScreen.style.display = 'none';
+    score = 0;
+    playerX = 50;
+    playerY = 400;
+    isJumping = false;
+    velocityY = 0;
+    obstacles = [];
+    generateObstacle();
+    gameLoop();
+}
+
+function gameLoop() {
+    if (gameState === 'playing') {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+function update() {
+    // Player movement
+    if (isJumping) {
+        velocityY += gravity;
+        playerY += velocityY;
+        if (playerY >= groundY) {
+            playerY = groundY;
+            isJumping = false;
+        }
+    }
+
+    // Obstacle movement
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].x -= obstacleSpeed;
+
+        // Remove obstacles that are off-screen
+        if (obstacles[i].x < -obstacles[i].width) {
+            obstacles.splice(i, 1);
+        }
+
+        // Collision detection
+        if (
+            playerX < obstacles[i].x + obstacles[i].width &&
+            playerX + playerWidth > obstacles[i].x &&
+            playerY < obstacles[i].y + obstacles[i].height &&
+            playerY + playerHeight > obstacles[i].y
+        ) {
+            gameOver
